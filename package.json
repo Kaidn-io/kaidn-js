@@ -1,0 +1,24 @@
+{
+  "name": "kaidn-js",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Official JavaScript/TypeScript client libraries for Kaidn — the AI fraud-scoring API.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kaidn-io/kaidn-js.git"
+  },
+  "homepage": "https://kaidn.io",
+  "bugs": "https://github.com/Kaidn-io/kaidn-js/issues",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build:lib --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.6"
+  }
+}

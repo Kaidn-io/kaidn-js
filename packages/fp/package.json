@@ -1,0 +1,45 @@
+{
+  "name": "@kaidn/fp",
+  "version": "0.1.2",
+  "description": "Kaidn device fingerprint — thin browser client. Computes a stable device_id + automation signals (headless/UA/JA4 beacon) to pass to the Kaidn fraud-scoring API. Open client, closed engine.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kaidn-io/kaidn-js.git",
+    "directory": "packages/fp"
+  },
+  "homepage": "https://github.com/Kaidn-io/kaidn-js/tree/main/packages/fp#readme",
+  "bugs": "https://github.com/Kaidn-io/kaidn-js/issues",
+  "main": "./dist/lib/index.js",
+  "module": "./dist/lib/index.js",
+  "types": "./dist/lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
+    }
+  },
+  "files": ["dist/lib", "README.md", "LICENSE"],
+  "sideEffects": false,
+  "keywords": ["kaidn", "fingerprint", "device-fingerprint", "fraud", "bot-detection", "thumbmark", "automation-detection"],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "build:lib": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build:lib"
+  },
+  "dependencies": {
+    "@thumbmarkjs/thumbmarkjs": "^1.10.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.6"
+  }
+}
