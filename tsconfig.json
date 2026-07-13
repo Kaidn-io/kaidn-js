@@ -1,0 +1,19 @@
+{
+  "// note": "Editor/typecheck config for the examples. Maps the published package names to their source so examples resolve with no build step. The per-package tsconfig.build.json files handle the actual npm builds.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@kaidn/sdk": ["packages/sdk/src/index.ts"],
+      "@kaidn/fp": ["packages/fp/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/examples"]
+}

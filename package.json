@@ -14,10 +14,11 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tsconfig.json --noEmit",
     "build": "npm run build:lib --workspaces --if-present"
   },
   "devDependencies": {
+    "@types/node": "^22",
     "typescript": "^5.4.5",
     "vitest": "^3.2.6"
   }
