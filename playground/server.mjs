@@ -11,20 +11,50 @@ import { dirname, join } from "node:path";
 import { Kaidn, KaidnError } from "@kaidn/sdk";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..");
 const PORT = Number(process.env.PORT ?? 8787);
 const ENV_KEY = process.env.KAIDN_API_KEY ?? "";
 const BASE_URL = process.env.KAIDN_BASE_URL ?? "https://api.kaidn.io";
 
-const PAGE = readFileSync(join(HERE, "index.html"), "utf8").replace(
-  "%%ENV_KEY%%",
-  ENV_KEY.replace(/"/g, "&quot;")
-);
+const PAGE = readFileSync(join(HERE, "index.html"), "utf8")
+  .replace("%%ENV_KEY%%", ENV_KEY.replace(/"/g, "&quot;"))
+  .replace("%%BASE_URL%%", BASE_URL);
 const JSON_HEADERS = { "content-type": "application/json" };
+
+// Bundle @kaidn/fp's collect() for the browser so the page can auto-detect a
+// device_id. Best-effort: if esbuild/@kaidn/fp isn't available, device_id just
+// stays manual — the rest of the playground still works.
+let FP_BUNDLE = "window.KaidnFp=null;";
+try {
+  const { build } = await import("esbuild");
+  const out = await build({
+    stdin: {
+      // resolve fp from source so no build step is needed (esbuild maps .js→.ts)
+      contents: `import { collect } from "./packages/fp/src/index.js"; window.KaidnFp = { collect };`,
+      resolveDir: ROOT,
+      loader: "ts",
+    },
+    bundle: true,
+    minify: true,
+    format: "iife",
+    platform: "browser",
+    target: ["es2019"],
+    write: false,
+  });
+  FP_BUNDLE = out.outputFiles[0].text;
+} catch (err) {
+  console.warn("  (device_id auto-detect off — could not bundle @kaidn/fp:", err?.message ?? err, ")");
+}
 
 const server = createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(PAGE);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/fp.js") {
+    res.writeHead(200, { "content-type": "application/javascript" });
+    res.end(FP_BUNDLE);
     return;
   }
   if (req.method === "POST" && req.url === "/score") {

@@ -63,7 +63,7 @@
         <label>User ID<input id="user_id" placeholder="u_8231" /></label>
         <label>IP address<input id="ip" placeholder="203.0.113.7" /></label>
         <label>Email<input id="email" placeholder="user@example.com" /></label>
-        <label>Device ID<input id="device_id" placeholder="fp_abc123" /></label>
+        <label>Device ID <span class="muted" id="dhint"></span><input id="device_id" placeholder="fp_abc123" /></label>
         <label>Phone<input id="phone" placeholder="+14155551234" /></label>
         <label>Phone country<input id="phone_country" placeholder="US" /></label>
         <label>Event country<input id="event_country" placeholder="US" /></label>
@@ -83,7 +83,9 @@
   </div>
 </div>
 
+<script src="/fp.js"></script>
 <script>
+  const BASE_URL = "%%BASE_URL%%";
   const FIELDS = ["user_id","ip","email","device_id","phone","phone_country","event_country","ip_country"];
   const PRESETS = {
     clean: { event:"signup", user_id:"u_1001", ip:"8.8.8.8", email:"jane@gmail.com", event_country:"US", ip_country:"US" },
@@ -178,6 +180,20 @@
     setTimeout(() => (btn.textContent = "copy"), 1200);
   }
   function esc(s) { return String(s).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m])); }
+
+  // auto-detect the visitor's public IP (what Kaidn sees) — fill if empty
+  fetch(BASE_URL + "/v1/ip")
+    .then((r) => r.json())
+    .then((d) => { if (d && d.ip && !$("ip").value) $("ip").value = d.ip; })
+    .catch(() => {});
+
+  // auto-detect a device_id via @kaidn/fp collect() — fill if empty
+  if (window.KaidnFp && window.KaidnFp.collect) {
+    $("dhint").textContent = "detecting…";
+    window.KaidnFp.collect()
+      .then((fp) => { if (!$("device_id").value) $("device_id").value = fp.device_id; $("dhint").textContent = "auto-detected"; })
+      .catch(() => { $("dhint").textContent = ""; });
+  }
 </script>
 </body>
 </html>
