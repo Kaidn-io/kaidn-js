@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kaidn — Fingerprint test</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>Fingerprint test</h1>
+  <p class="sub">This runs <code>@kaidn/fp</code> in your browser — exactly what your users' browsers run.</p>
+  <div class="nav"><a href="/">← Home</a><a href="/score.html">Score</a><a href="/fingerprint.html" class="on">Fingerprint</a></div>
+
+  <div class="grid">
+    <!-- 1) collect(): pure browser fingerprint, no key needed -->
+    <div class="panel">
+      <h2 style="margin-top:0;font-size:15px">1. collect() — your device fingerprint</h2>
+      <p class="muted" style="font-size:13px">No key required. This is the <code>device_id</code> + signals you'd pass to <code>/v1/score</code>.</p>
+      <div id="fp"><p class="muted">Collecting…</p></div>
+      <button id="recollect" style="margin-top:12px">Re-run collect()</button>
+    </div>
+
+    <!-- 2) beacon(): captures a JA4 at the edge, needs a publishable key -->
+    <div class="panel">
+      <h2 style="margin-top:0;font-size:15px">2. beacon() — capture a JA4 at the edge</h2>
+      <p class="muted" style="font-size:13px">
+        Sends the fingerprint to <code>/v1/fp</code> so Kaidn records this connection's JA4 TLS fingerprint against the
+        device. Needs a <b>publishable</b> key (<code>pk_live_…</code>) whose tracker allows this origin — add
+        <code>localhost</code> as an approved domain in your dashboard.
+      </p>
+      <label>Tracker publishable key</label>
+      <input id="pk" placeholder="pk_live_…" />
+      <button class="primary" id="beacon">Send beacon</button>
+      <div id="beaconOut" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px">
+    <h2 style="margin-top:0;font-size:15px">How you'd use this in your app</h2>
+    <pre id="usage"></pre>
+  </div>
+</div>
+<script src="/config.js"></script>
+<script src="/fp.js"></script>
+<script src="/fingerprint.js"></script>
+</body>
+</html>

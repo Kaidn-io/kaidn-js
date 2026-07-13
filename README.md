@@ -13,6 +13,48 @@ npm install @kaidn/sdk   # server
 npm install @kaidn/fp    # browser
 ```
 
+## What's in this repo
+
+```
+kaidn-js/
+├─ packages/
+│  ├─ sdk/          @kaidn/sdk  — the published server library (source + tests)
+│  │  └─ examples/  copy-paste usage snippets
+│  └─ fp/           @kaidn/fp   — the published browser library (source + tests)
+│     └─ examples/  copy-paste usage snippets
+├─ playground/      a small local app to try both libraries with your own keys
+│  ├─ server.mjs    localhost server (serves the pages, proxies /score via the SDK)
+│  └─ public/       the two playground pages (Score + Fingerprint)
+└─ .env.example     where your keys go — copy to .env
+```
+
+You don't need to build anything to read the code: **`packages/*/src`** is the library
+source, **`packages/*/examples`** are minimal snippets, and **`playground/`** is a runnable
+app. Consumers just `npm install` the packages from npm — this repo is for reading,
+examples, and the playground.
+
+## Running things (and where your API key goes)
+
+The packages are **libraries** — you don't "run" a library, you install it and call it.
+There are three ways to see them in action, in increasing order of setup:
+
+| Command | What it does | Needs a key? |
+| --- | --- | --- |
+| `npm test` | Unit tests (mock API) — proves the client logic. This is the passing output you may have already seen. | **No** — uses a fake key + mocked network |
+| `npm run example:score` / `example:batch` | Runs a real `.mjs` example against the **live** API and prints the verdict. | **Yes** — your `KAIDN_API_KEY` |
+| `npm run playground` | Opens a local web UI to score events and test the fingerprint. | Yes (or paste it in the page) |
+
+**Where the key goes:** copy `.env.example` → `.env` and fill it in:
+
+```bash
+cp .env.example .env      # then edit .env:  KAIDN_API_KEY=kaidn_live_…
+npm install
+npm run example:score     # scores a sample signup against the live API
+```
+
+> `.env` is gitignored. `npm test` needs **no** key — that's why it passes out of the box;
+> it never calls the real API. Get a key from your dashboard → **API keys**.
+
 ## How they fit together
 
 ```mermaid
@@ -45,26 +87,33 @@ The scoring **engine** is closed — this repo is the *open client*.
 
 ## Examples
 
-- `packages/sdk/examples/` — [score a signup](./packages/sdk/examples/score-signup.ts),
-  [batch + lists](./packages/sdk/examples/batch-and-lists.ts)
+- `packages/sdk/examples/` — [score a signup](./packages/sdk/examples/score-signup.mjs)
+  (`npm run example:score`), [batch + lists](./packages/sdk/examples/batch-and-lists.mjs)
+  (`npm run example:batch`)
 - `packages/fp/examples/` — [browser beacon](./packages/fp/examples/browser-beacon.ts)
+  (browser-only — try it live on the playground's **Fingerprint** page)
 
 ## Playground
 
-Try scoring locally with your own API key — no code to write:
+A local app to try both libraries with your own keys — no code to write.
 
 ```bash
+cp .env.example .env      # then fill in your keys (optional — you can also paste them in the pages)
 npm install
-npm run playground     # → http://127.0.0.1:8787
+npm run playground        # → http://127.0.0.1:8787
 ```
 
-Open the page, paste your `kaidn_…` API key, fill in an event (or hit **Clean user** /
-**Likely fraud**), and **Run score**. You'll see the live verdict, reasons, and device
-intel, plus copy-paste `@kaidn/sdk` and cURL snippets for your exact inputs. Your key
-stays on the local server — it's only ever sent to the Kaidn API by the SDK.
+It has two pages:
 
-> Prefer not to type the key each time? `KAIDN_API_KEY=kaidn_… npm run playground`
-> pre-fills it. Point at a different environment with `KAIDN_BASE_URL=…`.
+- **`/` Score** — runs `/v1/score` via `@kaidn/sdk`. Fill an event (or hit **Clean user** /
+  **Likely fraud**), get the verdict + reasons, and copy the `@kaidn/sdk`/cURL code. Your
+  **secret** API key stays on the local server. The IP and device_id fields auto-fill.
+- **`/fingerprint` Fingerprint test** — runs `@kaidn/fp` right in your browser. See your
+  `device_id` and automation signals from `collect()`, and use `beacon()` with a
+  **publishable** key (`pk_live_…`) to capture a JA4. _(Add `localhost` as an approved
+  domain on the tracker so the beacon is allowed.)_
+
+Keys come from `.env` (see `.env.example`) or the in-page fields.
 
 ## Develop
 

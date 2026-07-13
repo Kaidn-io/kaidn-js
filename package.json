@@ -16,7 +16,9 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tsconfig.json --noEmit",
     "build": "npm run build:lib --workspaces --if-present",
-    "playground": "npm run build:lib --workspace @kaidn/sdk && node playground/server.mjs"
+    "playground": "npm run build:lib --workspace @kaidn/sdk && node playground/server.mjs",
+    "example:score": "npm run build:lib --workspace @kaidn/sdk --silent && node --env-file-if-exists=.env packages/sdk/examples/score-signup.mjs",
+    "example:batch": "npm run build:lib --workspace @kaidn/sdk --silent && node --env-file-if-exists=.env packages/sdk/examples/batch-and-lists.mjs"
   },
   "devDependencies": {
     "@types/node": "^22",

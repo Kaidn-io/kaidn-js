@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kaidn — Score playground</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>Score playground</h1>
+  <p class="sub">Runs <code>/v1/score</code> via <code>@kaidn/sdk</code> on the local server. Every run counts as one event.</p>
+  <div class="nav"><a href="/">← Home</a><a href="/score.html" class="on">Score</a><a href="/fingerprint.html">Fingerprint</a></div>
+
+  <div class="panel" style="margin-bottom:8px">
+    <label>Your Kaidn API key <span class="muted">(kaidn_… — dashboard → API keys; or set KAIDN_API_KEY in .env)</span></label>
+    <input id="apiKey" type="password" placeholder="kaidn_live_…" />
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="chips">
+        <span class="muted" style="font-size:12px">Quick fill:</span>
+        <button id="preClean">Clean user</button>
+        <button id="preRisky">Likely fraud</button>
+        <button id="clear">clear</button>
+      </div>
+      <label>Event *</label>
+      <input id="event" list="events" value="signup" />
+      <datalist id="events">
+        <option>signup</option><option>login</option><option>trial_start</option>
+        <option>cashout</option><option>checkout</option><option>credit_redeem</option>
+      </datalist>
+      <div class="row">
+        <label>User ID<input id="user_id" placeholder="u_8231" /></label>
+        <label>IP address<input id="ip" placeholder="203.0.113.7" /></label>
+        <label>Email<input id="email" placeholder="user@example.com" /></label>
+        <label>Device ID <span class="muted" id="dhint"></span><input id="device_id" placeholder="fp_abc123" /></label>
+        <label>Phone<input id="phone" placeholder="+14155551234" /></label>
+        <label>Phone country<input id="phone_country" placeholder="US" /></label>
+        <label>Event country<input id="event_country" placeholder="US" /></label>
+        <label>IP country<input id="ip_country" placeholder="US" /></label>
+      </div>
+      <button class="primary" id="run">Run score</button>
+    </div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button class="on" data-tab="result">Result</button>
+        <button data-tab="sdk">@kaidn/sdk</button>
+        <button data-tab="curl">cURL</button>
+      </div>
+      <div id="out"><p class="muted">Fill in an event and hit Run score.</p></div>
+    </div>
+  </div>
+</div>
+<script src="/config.js"></script>
+<script src="/fp.js"></script>
+<script src="/score.js"></script>
+</body>
+</html>
