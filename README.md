@@ -49,6 +49,23 @@ The scoring **engine** is closed — this repo is the *open client*.
   [batch + lists](./packages/sdk/examples/batch-and-lists.ts)
 - `packages/fp/examples/` — [browser beacon](./packages/fp/examples/browser-beacon.ts)
 
+## Playground
+
+Try scoring locally with your own API key — no code to write:
+
+```bash
+npm install
+npm run playground     # → http://127.0.0.1:8787
+```
+
+Open the page, paste your `kaidn_…` API key, fill in an event (or hit **Clean user** /
+**Likely fraud**), and **Run score**. You'll see the live verdict, reasons, and device
+intel, plus copy-paste `@kaidn/sdk` and cURL snippets for your exact inputs. Your key
+stays on the local server — it's only ever sent to the Kaidn API by the SDK.
+
+> Prefer not to type the key each time? `KAIDN_API_KEY=kaidn_… npm run playground`
+> pre-fills it. Point at a different environment with `KAIDN_BASE_URL=…`.
+
 ## Develop
 
 ```bash

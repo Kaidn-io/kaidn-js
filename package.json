@@ -15,7 +15,8 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tsconfig.json --noEmit",
-    "build": "npm run build:lib --workspaces --if-present"
+    "build": "npm run build:lib --workspaces --if-present",
+    "playground": "npm run build:lib --workspace @kaidn/sdk && node playground/server.mjs"
   },
   "devDependencies": {
     "@types/node": "^22",
