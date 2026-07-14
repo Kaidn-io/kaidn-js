@@ -3,6 +3,8 @@ import { detectAutomation } from "./automation.js";
 import { checkUaConsistency } from "./consistency.js";
 import { detectEnvironment } from "./environment.js";
 import { detectNoiseInjection } from "./noise.js";
+import { detectTamper, type TamperProbe } from "./tamper.js";
+import { compareContexts, type ContextSnapshot } from "./context.js";
 import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
@@ -65,6 +67,25 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
 
   const timezone = resolveTimezone();
 
+  // Native-code lie detection: the spoofed canvas/WebGL/navigator APIs an anti-
+  // detect browser overrides no longer report `[native code]`. Catches session-
+  // stable tools (Multilogin/GoLogin/AdsPower) that fixed per-profile noise hides
+  // from the value-comparison checks above. Brave farbles at engine level (no JS
+  // wrappers) so it stays clean.
+  const isBrave = isBraveBrowser(nav);
+  const tamper = detectTamper({ probes: gatherTamperProbes(), toStringIntact: fnToStringIntact(), isBrave });
+
+  // Cross-context comparison: an anti-detect tool patches window.navigator but
+  // usually misses the Web Worker's, so the worker reports the real UA/CPU/tz.
+  const workerCtx = await workerSnapshot();
+  const mainCtx: ContextSnapshot = {
+    userAgent: nav?.userAgent,
+    hardwareConcurrency: nav?.hardwareConcurrency,
+    platform: nav?.platform,
+    timezone,
+  };
+  const context = compareContexts(mainCtx, workerCtx);
+
   return {
     device_id: `fp_${res.thumbmark}`,
     device: {
@@ -72,13 +93,122 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
       ua_consistent: consistency.consistent,
       is_emulated: environment.isEmulated,
       is_noise_injected: noiseInjected || undefined,
+      is_tampered: tamper.tampered || undefined,
+      is_context_mismatch: context.mismatch || undefined,
     },
     attributes: { ...parseUserAgent(nav?.userAgent), timezone },
     anomalies: automation.anomalies
       .concat(consistency.reason ? [consistency.reason] : [])
       .concat(environment.anomalies)
-      .concat(noiseInjected ? ["noise_injected"] : []),
+      .concat(noiseInjected ? ["noise_injected"] : [])
+      .concat(tamper.lies.map((l) => `tamper:${l}`))
+      .concat(context.fields.map((f) => `ctx:${f}`)),
   };
+}
+
+const NATIVE_RE = /\{\s*\[native code\]\s*\}\s*$/;
+
+/** True if a function reports native code (untampered). Safe on anything. */
+function isNativeFn(fn: unknown): boolean {
+  if (typeof fn !== "function") return true; // absent API isn't a lie
+  try {
+    return NATIVE_RE.test(Function.prototype.toString.call(fn));
+  } catch {
+    return false;
+  }
+}
+
+/** True if a prototype getter reports native code; true when there's no getter. */
+function isNativeGetter(proto: object | undefined, prop: string): boolean {
+  if (!proto) return true;
+  try {
+    const d = Object.getOwnPropertyDescriptor(proto, prop);
+    return d?.get ? isNativeFn(d.get) : true;
+  } catch {
+    return true;
+  }
+}
+
+/** `Function.prototype.toString` itself reports native — false = the detector's
+ *  own tool was patched, which is definitive spoofing. */
+function fnToStringIntact(): boolean {
+  return isNativeFn(Function.prototype.toString);
+}
+
+/**
+ * Probe the native functions/getters an anti-detect browser must override to
+ * spoof a fingerprint. Each returns whether it still reports native code. Never
+ * throws; a missing API resolves to `native: true` (absence isn't a lie).
+ */
+function gatherTamperProbes(): TamperProbe[] {
+  if (typeof globalThis === "undefined") return [];
+  const g = globalThis as unknown as Record<string, { prototype?: Record<string, unknown> }>;
+  const probes: TamperProbe[] = [];
+  const fnProbe = (name: string, fn: unknown) => probes.push({ name, native: isNativeFn(fn) });
+
+  fnProbe("canvas.toDataURL", g.HTMLCanvasElement?.prototype?.toDataURL);
+  fnProbe("canvas.toBlob", g.HTMLCanvasElement?.prototype?.toBlob);
+  fnProbe("canvas.getContext", g.HTMLCanvasElement?.prototype?.getContext);
+  fnProbe("ctx2d.getImageData", g.CanvasRenderingContext2D?.prototype?.getImageData);
+  fnProbe("webgl.getParameter", g.WebGLRenderingContext?.prototype?.getParameter);
+  fnProbe("webgl2.getParameter", g.WebGL2RenderingContext?.prototype?.getParameter);
+  fnProbe("audio.getChannelData", g.AudioBuffer?.prototype?.getChannelData);
+
+  const navProto = (g.Navigator as { prototype?: object } | undefined)?.prototype;
+  for (const p of ["hardwareConcurrency", "platform", "userAgent", "languages", "deviceMemory"]) {
+    probes.push({ name: `navigator.${p}`, native: isNativeGetter(navProto, p) });
+  }
+  return probes;
+}
+
+/**
+ * Read navigator + timezone inside a Web Worker so it can be compared to the main
+ * thread. An anti-detect tool that patched `window` but not the worker leaks the
+ * real values here. Bounded + fail-safe: returns undefined when Workers/Blob URLs
+ * are unavailable or CSP-blocked, or on timeout.
+ */
+async function workerSnapshot(timeoutMs = 700): Promise<ContextSnapshot | undefined> {
+  if (
+    typeof Worker === "undefined" ||
+    typeof Blob === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function"
+  ) {
+    return undefined;
+  }
+  const code =
+    "self.onmessage=function(){var n=self.navigator;var tz=null;" +
+    "try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){}" +
+    "postMessage({userAgent:n.userAgent,hardwareConcurrency:n.hardwareConcurrency,platform:n.platform,timezone:tz})};";
+  let url: string | undefined;
+  let worker: Worker | undefined;
+  try {
+    url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+    worker = new Worker(url);
+    const w = worker;
+    return await new Promise<ContextSnapshot | undefined>((resolve) => {
+      const done = (v: ContextSnapshot | undefined) => resolve(v);
+      const t = setTimeout(() => done(undefined), timeoutMs);
+      w.onmessage = (e: MessageEvent) => {
+        clearTimeout(t);
+        done(e.data as ContextSnapshot);
+      };
+      w.onerror = () => {
+        clearTimeout(t);
+        done(undefined);
+      };
+      w.postMessage(0);
+    });
+  } catch {
+    return undefined;
+  } finally {
+    try {
+      worker?.terminate();
+      if (url) URL.revokeObjectURL(url);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** The browser's IANA timezone, or null if the Intl API is unavailable. */

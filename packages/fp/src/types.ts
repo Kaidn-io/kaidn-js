@@ -21,6 +21,16 @@ export interface FpDeviceSignals {
    *  actively randomising the fingerprint (catches the ACT of spoofing, so it
    *  survives per-profile randomization). Suppressed for Brave (legit farbling). */
   is_noise_injected?: boolean;
+  /** a native fingerprinting API (canvas/WebGL/navigator getter) was OVERRIDDEN —
+   *  it no longer reports `[native code]`. The signature of a session-stable
+   *  anti-detect browser (Multilogin/GoLogin/AdsPower) whose fixed per-profile
+   *  noise hides from value comparisons but whose API patches still leak. Brave
+   *  farbles at engine level (no JS wrappers) so it stays clean. */
+  is_tampered?: boolean;
+  /** the browser's navigator/timezone DIFFERS between the main thread and a Web
+   *  Worker — an anti-detect tool patched `window` but missed the worker context,
+   *  leaking the real values. A near-zero-false-positive spoof tell. */
+  is_context_mismatch?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */
