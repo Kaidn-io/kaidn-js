@@ -5,6 +5,15 @@
 // Or directly:   KAIDN_API_KEY=kaidn_… node packages/sdk/examples/batch-and-lists.mjs
 import { Kaidn } from "@kaidn/sdk";
 
+// load .env if present (Node 20.12+); older Node just uses exported env vars
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile();
+  } catch {
+    /* no .env — fine */
+  }
+}
+
 const apiKey = process.env.KAIDN_API_KEY;
 if (!apiKey) {
   console.error("\n  Set KAIDN_API_KEY first — copy .env.example to .env and add your key.\n");
