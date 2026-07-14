@@ -103,13 +103,17 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
   return {
     device_id: `fp_${res.thumbmark}`,
     device: {
+      // All detection results are explicit booleans (false = ran, not detected),
+      // matching is_headless/is_emulated — so a clean device reports `false`, not
+      // an ambiguous absent value. The engine treats absent and false the same
+      // (it only acts on `=== true`), so this stays "quiet unless true" downstream.
       is_headless: automation.isHeadless,
       ua_consistent: consistency.consistent,
       is_emulated: environment.isEmulated,
-      is_noise_injected: noiseInjected || undefined,
-      is_tampered: tamper.tampered || undefined,
-      is_context_mismatch: context.mismatch || undefined,
-      is_engine_mismatch: engine.mismatch || undefined,
+      is_noise_injected: noiseInjected,
+      is_tampered: tamper.tampered,
+      is_context_mismatch: context.mismatch,
+      is_engine_mismatch: engine.mismatch,
     },
     attributes: { ...parseUserAgent(nav?.userAgent), timezone },
     anomalies: automation.anomalies
