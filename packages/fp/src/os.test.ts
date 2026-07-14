@@ -55,3 +55,47 @@ describe("detectOsMismatch", () => {
     expect(detectOsMismatch({ claimed: "Windows", voices: [] }).mismatch).toBe(false);
   });
 });
+
+describe("detectOsMismatch — font identity (A/B validated on real Multilogin samples)", () => {
+  // exact font list from BOTH real fingerprint.com samples (same M2 Mac)
+  const MAC_FONTS = ["Arial Unicode MS", "Gill Sans", "Helvetica Neue", "Menlo"];
+  // a genuine Windows machine always carries its system fonts
+  const WIN_FONTS = ["Segoe UI", "Calibri", "Consolas", "Cambria", "Arial"];
+
+  it("FLAGS Mac fonts under a Windows UA (the spoof, score 32)", () => {
+    const r = detectOsMismatch({ claimed: "Windows", fonts: MAC_FONTS });
+    expect(r.mismatch).toBe(true);
+    expect(r.reason).toBe("fonts_apple");
+  });
+
+  it("stays SILENT on the same fonts under a Mac UA (the valid device, score 2)", () => {
+    expect(detectOsMismatch({ claimed: "macOS", fonts: MAC_FONTS }).mismatch).toBe(false);
+  });
+
+  it("stays SILENT for a normal Windows machine (has its own system fonts)", () => {
+    expect(detectOsMismatch({ claimed: "Windows", fonts: WIN_FONTS }).mismatch).toBe(false);
+  });
+
+  it("stays SILENT for a Windows DESIGNER who installed Mac fonts (still has Segoe UI/Calibri)", () => {
+    // the key false-positive guard: claimed-OS system fonts present → never flag
+    const r = detectOsMismatch({ claimed: "Windows", fonts: [...WIN_FONTS, "Helvetica Neue", "Menlo"] });
+    expect(r.mismatch).toBe(false);
+  });
+
+  it("stays SILENT when no signature fonts are present either way (fail-safe)", () => {
+    expect(detectOsMismatch({ claimed: "Windows", fonts: ["Arial", "Verdana", "Tahoma"] }).mismatch).toBe(false);
+  });
+
+  it("catches the reverse — Windows fonts under a Mac UA with no Mac fonts", () => {
+    const r = detectOsMismatch({ claimed: "macOS", fonts: ["Segoe UI", "Calibri", "Consolas"] });
+    expect(r.mismatch).toBe(true);
+    expect(r.reason).toBe("fonts_windows");
+  });
+
+  it("ORs with the voice/CH surfaces into one signal", () => {
+    const r = detectOsMismatch({ claimed: "Windows", fonts: MAC_FONTS, clientHintsPlatform: "macOS" });
+    expect(r.mismatch).toBe(true);
+    expect(r.reason).toContain("ch_apple");
+    expect(r.reason).toContain("fonts_apple");
+  });
+});

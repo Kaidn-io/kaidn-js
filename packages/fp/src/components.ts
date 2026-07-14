@@ -48,3 +48,17 @@ export function countFonts(tree: ComponentTree | undefined): number | undefined 
   }
   return undefined;
 }
+
+/** The list of font NAMES ThumbmarkJS detected (its `fonts` component). Used to
+ *  read OS-specific fonts (Menlo→Mac, Segoe UI→Windows) against the claimed OS.
+ *  Empty when the component is absent (fail-safe). */
+export function listFonts(tree: ComponentTree | undefined): string[] {
+  if (!tree) return [];
+  const flat = flattenComponents(tree);
+  for (const [key, value] of Object.entries(flat)) {
+    if (/(^|\.)fonts?($|\.)/i.test(key) && typeof value === "string" && value.length > 0) {
+      return value.split(",").map((f) => f.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}

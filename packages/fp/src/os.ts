@@ -67,6 +67,30 @@ export function osFromVoices(voices: readonly VoiceLike[]): OsFamily {
   return hits.length === 1 ? hits[0]! : "unknown";
 }
 
+/**
+ * Signature fonts that ship as SYSTEM fonts on exactly one OS family. A machine
+ * of that OS always has them (they can't be removed); a machine of another OS
+ * normally doesn't. Used for the asymmetry rule below — NOT a bare "has a Mac
+ * font" check, which would false-positive on a Windows designer who installed
+ * Helvetica Neue. Lowercased for exact-ish matching against the detected list.
+ */
+const OS_SIGNATURE_FONTS: Record<Exclude<OsFamily, "unknown" | "android">, string[]> = {
+  apple: ["menlo", "helvetica neue", "geneva", "monaco", "lucida grande", "avenir", "avenir next", "sf pro text", "sf pro display", "gill sans"],
+  windows: ["segoe ui", "calibri", "cambria", "consolas", "candara", "constantia", "corbel", "franklin gothic", "lucida console"],
+  linux: ["dejavu sans", "liberation sans", "liberation serif", "ubuntu", "cantarell", "freesans", "nimbus sans"],
+  chromeos: ["roboto"],
+};
+
+/** Which OS families have at least one signature font present in the list. */
+function fontOsFamilies(fonts: readonly string[]): Set<OsFamily> {
+  const lower = new Set(fonts.map((f) => f.trim().toLowerCase()));
+  const fams = new Set<OsFamily>();
+  for (const [fam, sig] of Object.entries(OS_SIGNATURE_FONTS)) {
+    if (sig.some((s) => lower.has(s))) fams.add(fam as OsFamily);
+  }
+  return fams;
+}
+
 export interface OsInput {
   /** the OS the UA claims (from parseUserAgent().os), e.g. "Windows". */
   claimed?: string | null;
@@ -74,6 +98,8 @@ export interface OsInput {
   voices?: readonly VoiceLike[];
   /** navigator.userAgentData.platform, e.g. "macOS". */
   clientHintsPlatform?: string;
+  /** detected font names (from the fingerprint's font probe). */
+  fonts?: readonly string[];
 }
 
 export interface OsResult {
@@ -97,6 +123,18 @@ export function detectOsMismatch(input: OsInput): OsResult {
 
   const chOs = osFamily(input.clientHintsPlatform);
   if (chOs !== "unknown" && chOs !== claimed) reasons.push(`ch_${chOs}`);
+
+  // Font identity (the A/B-validated tell): the machine shows another OS's system
+  // fonts AND *none* of the claimed OS's. A genuine machine of the claimed OS
+  // always carries its own unremovable system fonts, so this can't fire on it —
+  // even a Windows designer who installed Mac fonts still has Segoe UI/Calibri.
+  // Only a machine that is really OS Y while claiming OS X produces the asymmetry.
+  if (input.fonts && input.fonts.length > 0) {
+    const fams = fontOsFamilies(input.fonts);
+    const claimedPresent = fams.has(claimed);
+    const otherFam = [...fams].find((f) => f !== claimed);
+    if (otherFam && !claimedPresent) reasons.push(`fonts_${otherFam}`);
+  }
 
   return { mismatch: reasons.length > 0, reason: reasons.join(",") || undefined };
 }

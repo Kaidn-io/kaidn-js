@@ -7,7 +7,7 @@ import { detectTamper, type TamperProbe } from "./tamper.js";
 import { compareContexts, type ContextSnapshot } from "./context.js";
 import { detectEngineMismatch } from "./engine.js";
 import { detectOsMismatch, type VoiceLike } from "./os.js";
-import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
+import { pickWebglRenderer, countFonts, listFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
 
@@ -110,6 +110,7 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
     claimed: uaAttrs.os,
     voices: await loadVoices(),
     clientHintsPlatform: (nav as unknown as { userAgentData?: { platform?: string } })?.userAgentData?.platform,
+    fonts: listFonts(res.components as ComponentTree),
   });
 
   return {
