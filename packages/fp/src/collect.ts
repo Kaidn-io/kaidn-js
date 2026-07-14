@@ -6,6 +6,7 @@ import { detectNoiseInjection } from "./noise.js";
 import { detectTamper, type TamperProbe } from "./tamper.js";
 import { compareContexts, type ContextSnapshot } from "./context.js";
 import { detectEngineMismatch } from "./engine.js";
+import { detectOsMismatch, type VoiceLike } from "./os.js";
 import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
@@ -100,6 +101,17 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
   // engine/UA emulation (e.g. a Chromium tool claiming an iOS Safari UA).
   const engine = detectEngineMismatch({ userAgent: nav?.userAgent, stack: new Error().stack });
 
+  // OS-truth cross-check: catch a CONSISTENT OS spoof (ua_consistent passes) by
+  // reading signals that leak the real OS — speech-synthesis voices + Client
+  // Hints — against the OS the UA claims. The strongest surface (the edge
+  // Sec-CH-UA-Platform header) is checked server-side.
+  const uaAttrs = parseUserAgent(nav?.userAgent);
+  const os = detectOsMismatch({
+    claimed: uaAttrs.os,
+    voices: await loadVoices(),
+    clientHintsPlatform: (nav as unknown as { userAgentData?: { platform?: string } })?.userAgentData?.platform,
+  });
+
   return {
     device_id: `fp_${res.thumbmark}`,
     device: {
@@ -114,16 +126,45 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
       is_tampered: tamper.tampered,
       is_context_mismatch: context.mismatch,
       is_engine_mismatch: engine.mismatch,
+      is_os_mismatch: os.mismatch,
     },
-    attributes: { ...parseUserAgent(nav?.userAgent), timezone },
+    attributes: { ...uaAttrs, timezone },
     anomalies: automation.anomalies
       .concat(consistency.reason ? [consistency.reason] : [])
       .concat(environment.anomalies)
       .concat(noiseInjected ? ["noise_injected"] : [])
       .concat(tamper.lies.map((l) => `tamper:${l}`))
       .concat(context.fields.map((f) => `ctx:${f}`))
-      .concat(engine.reason ? [engine.reason] : []),
+      .concat(engine.reason ? [engine.reason] : [])
+      .concat(os.reason ? [`os:${os.reason}`] : []),
   };
+}
+
+/**
+ * Load the speech-synthesis voice list, waiting briefly for the async
+ * `voiceschanged` population (getVoices() is often empty on first call). Bounded
+ * + fail-safe: returns [] when the API is unavailable or the timeout elapses, so
+ * a missing voice list can never manufacture a false positive.
+ */
+async function loadVoices(timeoutMs = 500): Promise<VoiceLike[]> {
+  const synth = (globalThis as unknown as { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
+  if (!synth || typeof synth.getVoices !== "function") return [];
+  const map = (vs: SpeechSynthesisVoice[]): VoiceLike[] => vs.map((v) => ({ name: v.name, voiceURI: v.voiceURI }));
+  const now = synth.getVoices();
+  if (now.length) return map(now);
+  return new Promise<VoiceLike[]>((resolve) => {
+    const finish = () => resolve(map(synth.getVoices()));
+    const t = setTimeout(finish, timeoutMs);
+    try {
+      synth.addEventListener("voiceschanged", () => {
+        clearTimeout(t);
+        finish();
+      }, { once: true });
+    } catch {
+      clearTimeout(t);
+      finish();
+    }
+  });
 }
 
 /**

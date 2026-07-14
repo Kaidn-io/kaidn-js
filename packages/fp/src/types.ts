@@ -35,6 +35,11 @@ export interface FpDeviceSignals {
    *  the browser the User-Agent claims — engine/UA emulation the UA string can't
    *  hide (e.g. a Chromium tool claiming an iOS Safari UA). iOS-WebKit aware. */
   is_engine_mismatch?: boolean;
+  /** an OS-truth signal (speech-synthesis voices or Client Hints) reveals a
+   *  DIFFERENT OS than the UA claims — a consistent OS spoof (e.g. a compiled-fork
+   *  anti-detect browser on macOS presenting as Windows). The server additionally
+   *  checks the unspoofable Sec-CH-UA-Platform header and ORs it in here. */
+  is_os_mismatch?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */

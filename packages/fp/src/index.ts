@@ -29,6 +29,15 @@ export {
   type EngineResult,
   type EngineFamily,
 } from "./engine.js";
+export {
+  detectOsMismatch,
+  osFromVoices,
+  osFamily,
+  type OsInput,
+  type OsResult,
+  type OsFamily,
+  type VoiceLike,
+} from "./os.js";
 export { flattenComponents, pickWebglRenderer, type ComponentTree } from "./components.js";
 export { parseUserAgent, type UaAttributes } from "./useragent.js";
 export type { FpResult, FpDeviceSignals, FpAttributes } from "./types.js";
