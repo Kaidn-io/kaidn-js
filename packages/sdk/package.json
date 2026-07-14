@@ -1,6 +1,6 @@
 {
   "name": "@kaidn/sdk",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Official Node/TypeScript server-side client for the Kaidn fraud-scoring API — score, checks, batch, lists, labels, analytics and config.",
   "type": "module",
   "repository": {
@@ -19,12 +19,25 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["kaidn", "fraud", "fraud-detection", "fraud-scoring", "abuse", "risk", "api-client", "sdk"],
+  "keywords": [
+    "kaidn",
+    "fraud",
+    "fraud-detection",
+    "fraud-scoring",
+    "abuse",
+    "risk",
+    "api-client",
+    "sdk"
+  ],
   "license": "MIT",
   "publishConfig": {
     "access": "public"

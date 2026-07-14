@@ -10,12 +10,29 @@ export interface CheckResult {
   evidence: Record<string, unknown>;
 }
 
-/** Client automation signals from @kaidn/fp (the browser fingerprint SDK). */
+/** Client device-integrity signals from @kaidn/fp (the browser fingerprint SDK).
+ *  Pass the `device` object @kaidn/fp's collect() returns straight through. */
 export interface DeviceSignals {
+  /** high-confidence automation: webdriver / headless UA / no languages */
   is_headless?: boolean;
+  /** the UA's claimed OS matches the real platform (`false` = a spoofing tell) */
   ua_consistent?: boolean;
   /** emulated / anti-detect environment (software or VM GPU, farm hardware) */
   is_emulated?: boolean;
+  /** canvas/WebGL/audio readback was non-deterministic within the session —
+   *  active fingerprint spoofing by an anti-detect / canvas-defender browser */
+  is_noise_injected?: boolean;
+  /** a native fingerprinting API was overridden (no longer `[native code]`) —
+   *  a session-stable anti-detect browser (Multilogin/GoLogin/AdsPower) */
+  is_tampered?: boolean;
+  /** navigator/timezone differs between the main thread and a Web Worker —
+   *  a spoofed window.navigator that missed the worker context */
+  is_context_mismatch?: boolean;
+  /** the real JS engine (V8 vs Gecko/JSC) contradicts the browser the UA claims */
+  is_engine_mismatch?: boolean;
+  /** an OS-truth signal (speech voices / Client Hints / Sec-CH-UA-Platform)
+   *  reveals a different OS than the UA claims — a consistent OS spoof */
+  is_os_mismatch?: boolean;
 }
 
 /** A scoring event — the body of POST /v1/score. `event` is the only required
@@ -28,6 +45,9 @@ export interface ScoreEvent {
   email?: string;
   device_id?: string;
   device?: DeviceSignals;
+  /** the client's IANA browser timezone (e.g. "Europe/London") from @kaidn/fp —
+   *  checked server-side against the IP's country to catch a cloaked profile */
+  timezone?: string;
   phone?: string;
   /** ISO country to parse a national `phone` against (e.g. "US") */
   phone_country?: string;
@@ -55,6 +75,13 @@ export interface DeviceBlock {
   is_headless: boolean | null;
   ua_consistent: boolean | null;
   is_emulated: boolean | null;
+  is_noise_injected: boolean | null;
+  is_tampered: boolean | null;
+  is_context_mismatch: boolean | null;
+  is_engine_mismatch: boolean | null;
+  is_os_mismatch: boolean | null;
+  /** the client's IANA browser timezone, echoed back for triage */
+  timezone: string | null;
   ja4: boolean;
   ja4_known_tool: string | null;
 }
