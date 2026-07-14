@@ -8,9 +8,10 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="nav"><a href="/">Home</a><a href="/score.html" class="on">Score</a><a href="/fingerprint.html">Fingerprint</a></div>
+  <p class="eyebrow">// @kaidn/sdk</p>
   <h1>Score playground</h1>
-  <p class="sub">Runs <code>/v1/score</code> via <code>@kaidn/sdk</code> on the local server. Every run counts as one event.</p>
-  <div class="nav"><a href="/">← Home</a><a href="/score.html" class="on">Score</a><a href="/fingerprint.html">Fingerprint</a></div>
+  <p class="sub">Runs <code>/v1/score</code> through the SDK on the local server. Every run counts as one event.</p>
 
   <div class="panel" style="margin-bottom:8px">
     <label>Your Kaidn API key <span class="muted">(kaidn_… — dashboard → API keys; or set KAIDN_API_KEY in .env)</span></label>
@@ -23,7 +24,7 @@
         <span class="muted" style="font-size:12px">Quick fill:</span>
         <button id="preClean">Clean user</button>
         <button id="preRisky">Likely fraud</button>
-        <button id="clear">clear</button>
+        <button id="clear" class="link">clear</button>
       </div>
       <label>Event *</label>
       <input id="event" list="events" value="signup" />

@@ -60,7 +60,7 @@ function setTab(t) {
 function render() {
   const out = $("out");
   if (curTab !== "result") {
-    out.innerHTML = "<pre>" + esc(snippet(curTab)) + "</pre><button style='margin-top:10px' id='copyBtn'>copy</button>";
+    out.innerHTML = "<pre>" + esc(snippet(curTab)) + "</pre><button class='copybtn' id='copyBtn'>copy</button>";
     $("copyBtn").onclick = (e) => copyPre(e.target);
     return;
   }

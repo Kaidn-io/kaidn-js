@@ -8,23 +8,28 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kaidn Playground</h1>
-  <p class="sub">Try the Kaidn client libraries locally, with your own keys. Two tools:</p>
+  <p class="eyebrow">// kaidn playground</p>
+  <h1>Try the client libraries</h1>
+  <p class="sub">Run <code>@kaidn/sdk</code> and <code>@kaidn/fp</code> locally with your own keys — no code to write.</p>
+
   <div class="grid">
-    <a class="panel card" href="/score.html">
-      <h2>🎯 Score playground</h2>
-      <p>Run <code>/v1/score</code> through <code>@kaidn/sdk</code> (server-side). Fill an event, get the
-      verdict + reasons, and copy the code. Uses your <b>secret API key</b>.</p>
+    <a class="panel" href="/score.html">
+      <h2>Score playground</h2>
+      <p>Run <code>/v1/score</code> through <code>@kaidn/sdk</code> on the server. Fill an event, get the verdict and
+      reasons, and copy the code. Uses your <strong>secret</strong> API key.</p>
+      <div class="arrow">Open →</div>
     </a>
-    <a class="panel card" href="/fingerprint.html">
-      <h2>🔎 Fingerprint test</h2>
-      <p>Run <code>@kaidn/fp</code> in this browser — see your <code>device_id</code> and automation signals,
-      and optionally beacon them to capture a JA4. Uses a <b>publishable key</b>.</p>
+    <a class="panel" href="/fingerprint.html">
+      <h2>Fingerprint test</h2>
+      <p>Run <code>@kaidn/fp</code> right in this browser — see your <code>device_id</code> and automation signals,
+      and beacon them to capture a JA4. Uses a <strong>publishable</strong> key.</p>
+      <div class="arrow">Open →</div>
     </a>
   </div>
-  <p class="sub" style="margin-top:24px">
-    Set keys in a <code>.env</code> file (copy <code>.env.example</code>) or paste them in the pages.
-    See the repo README for the full guide.
+
+  <p class="sub" style="margin-top:28px">
+    Keys go in a <code>.env</code> file (copy <code>.env.example</code>) or the in-page fields.
+    See the <a href="https://github.com/Kaidn-io/kaidn-js">repo README</a> for the full guide.
   </p>
 </div>
 </body>
