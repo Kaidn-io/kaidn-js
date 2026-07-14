@@ -1,7 +1,8 @@
 import { getThumbmark } from "@thumbmarkjs/thumbmarkjs";
 import { detectAutomation } from "./automation.js";
 import { checkUaConsistency } from "./consistency.js";
-import { pickWebglRenderer, type ComponentTree } from "./components.js";
+import { detectEnvironment } from "./environment.js";
+import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
 
@@ -26,6 +27,7 @@ export interface CollectOptions {
 export async function collect(options: CollectOptions = {}): Promise<FpResult> {
   const res = await getThumbmark({ timeout: options.timeoutMs ?? 3000 });
   const nav: Navigator | undefined = typeof navigator !== "undefined" ? navigator : undefined;
+  const webglRenderer = pickWebglRenderer(res.components as ComponentTree);
 
   const automation = detectAutomation({
     webdriver: nav?.webdriver,
@@ -38,7 +40,18 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
   const consistency = checkUaConsistency({
     userAgent: nav?.userAgent,
     platform: nav?.platform,
-    webglRenderer: pickWebglRenderer(res.components as ComponentTree),
+    webglRenderer,
+  });
+
+  // Anti-detect / VM detection — the deeper signals: software/VM GPU, farm-grade
+  // hardware, sparse fonts. `deviceMemory` is a non-standard Chrome field.
+  const environment = detectEnvironment({
+    webglRenderer,
+    hardwareConcurrency: nav?.hardwareConcurrency,
+    deviceMemory: (nav as unknown as { deviceMemory?: number })?.deviceMemory,
+    userAgent: nav?.userAgent,
+    fontCount: countFonts(res.components as ComponentTree),
+    maxTouchPoints: nav?.maxTouchPoints,
   });
 
   return {
@@ -46,9 +59,12 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
     device: {
       is_headless: automation.isHeadless,
       ua_consistent: consistency.consistent,
+      is_emulated: environment.isEmulated,
     },
     attributes: parseUserAgent(nav?.userAgent),
-    anomalies: automation.anomalies.concat(consistency.reason ? [consistency.reason] : []),
+    anomalies: automation.anomalies
+      .concat(consistency.reason ? [consistency.reason] : [])
+      .concat(environment.anomalies),
   };
 }
 

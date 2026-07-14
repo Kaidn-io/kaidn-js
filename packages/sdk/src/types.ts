@@ -14,6 +14,8 @@ export interface CheckResult {
 export interface DeviceSignals {
   is_headless?: boolean;
   ua_consistent?: boolean;
+  /** emulated / anti-detect environment (software or VM GPU, farm hardware) */
+  is_emulated?: boolean;
 }
 
 /** A scoring event — the body of POST /v1/score. `event` is the only required
@@ -52,6 +54,7 @@ export interface DeviceBlock {
   mobile: boolean | null;
   is_headless: boolean | null;
   ua_consistent: boolean | null;
+  is_emulated: boolean | null;
   ja4: boolean;
   ja4_known_tool: string | null;
 }

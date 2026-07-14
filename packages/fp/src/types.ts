@@ -11,6 +11,10 @@ export interface FpDeviceSignals {
   /** the OS claimed by the User-Agent matches the real platform. `false` is a
    *  spoofing tell (e.g. a Windows UA on a Linux box — classic headless farm). */
   ua_consistent: boolean;
+  /** an emulated / anti-detect environment: a software or VM GPU (SwiftShader,
+   *  llvmpipe, VMware…) or farm-grade hardware. `true` is a strong VM / evasion
+   *  tell that survives per-profile fingerprint randomization. */
+  is_emulated?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */

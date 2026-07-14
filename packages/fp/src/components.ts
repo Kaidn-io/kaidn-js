@@ -34,3 +34,17 @@ export function pickWebglRenderer(tree: ComponentTree | undefined): string | und
   }
   return undefined;
 }
+
+/** Count the fonts ThumbmarkJS detected (its `fonts` component is a list). A
+ *  desktop OS exposes dozens; a spoofed/anti-detect profile often exposes few. */
+export function countFonts(tree: ComponentTree | undefined): number | undefined {
+  if (!tree) return undefined;
+  const flat = flattenComponents(tree);
+  for (const [key, value] of Object.entries(flat)) {
+    // flattenComponents joins array values with commas → count the entries
+    if (/(^|\.)fonts?($|\.)/i.test(key) && typeof value === "string" && value.length > 0) {
+      return value.split(",").filter(Boolean).length;
+    }
+  }
+  return undefined;
+}
