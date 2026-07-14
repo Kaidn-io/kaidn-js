@@ -29,7 +29,7 @@ await build({
 await build({
   ...common,
   stdin: {
-    contents: `import { collect, beacon } from "./src/index.js"; window.KaidnFp = { collect, beacon };`,
+    contents: `import { collect, beacon, watch } from "./src/index.js"; window.KaidnFp = { collect, beacon, watch };`,
     resolveDir: root,
     loader: "ts",
   },
