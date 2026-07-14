@@ -15,6 +15,12 @@ export interface FpDeviceSignals {
    *  llvmpipe, VMware…) or farm-grade hardware. `true` is a strong VM / evasion
    *  tell that survives per-profile fingerprint randomization. */
   is_emulated?: boolean;
+  /** canvas/WebGL readback was non-deterministic within the session — the same
+   *  draw produced different bytes twice, which real GPU hardware never does.
+   *  A high-precision tell that an anti-detect / canvas-defender browser is
+   *  actively randomising the fingerprint (catches the ACT of spoofing, so it
+   *  survives per-profile randomization). Suppressed for Brave (legit farbling). */
+  is_noise_injected?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */
@@ -22,6 +28,9 @@ export interface FpAttributes {
   os: string | null;
   browser: string | null;
   mobile: boolean | null;
+  /** the browser's IANA timezone (e.g. "Europe/London"), or null if unavailable.
+   *  The server checks it against the IP's country to catch a cloaked profile. */
+  timezone: string | null;
 }
 
 export interface FpResult {

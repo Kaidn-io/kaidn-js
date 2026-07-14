@@ -2,6 +2,7 @@ import { getThumbmark } from "@thumbmarkjs/thumbmarkjs";
 import { detectAutomation } from "./automation.js";
 import { checkUaConsistency } from "./consistency.js";
 import { detectEnvironment } from "./environment.js";
+import { detectNoiseInjection } from "./noise.js";
 import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
@@ -54,18 +55,105 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
     maxTouchPoints: nav?.maxTouchPoints,
   });
 
+  // Noise injection: render the same canvas + WebGL twice and compare. Real
+  // hardware is deterministic; a difference means an anti-detect / canvas-
+  // defender browser is randomising the fingerprint per read. Brave's farbling
+  // does this legitimately, so it's suppressed.
+  const first = renderSignatures();
+  const second = renderSignatures();
+  const noiseInjected = detectNoiseInjection({ first, second, isBrave: isBraveBrowser(nav) });
+
+  const timezone = resolveTimezone();
+
   return {
     device_id: `fp_${res.thumbmark}`,
     device: {
       is_headless: automation.isHeadless,
       ua_consistent: consistency.consistent,
       is_emulated: environment.isEmulated,
+      is_noise_injected: noiseInjected || undefined,
     },
-    attributes: parseUserAgent(nav?.userAgent),
+    attributes: { ...parseUserAgent(nav?.userAgent), timezone },
     anomalies: automation.anomalies
       .concat(consistency.reason ? [consistency.reason] : [])
-      .concat(environment.anomalies),
+      .concat(environment.anomalies)
+      .concat(noiseInjected ? ["noise_injected"] : []),
   };
+}
+
+/** The browser's IANA timezone, or null if the Intl API is unavailable. */
+function resolveTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Brave exposes `navigator.brave`; its farbling perturbs canvas legitimately. */
+function isBraveBrowser(nav: Navigator | undefined): boolean {
+  return !!(nav as unknown as { brave?: unknown })?.brave;
+}
+
+/**
+ * Read a fixed, deterministic canvas + WebGL render into signature strings.
+ * Called twice per collect(); a real GPU returns identical strings both times,
+ * an injected-noise browser does not. Returns [] when the DOM/canvas isn't
+ * available so detectNoiseInjection stays quiet (fail-safe).
+ */
+function renderSignatures(): string[] {
+  if (typeof document === "undefined") return [];
+  const sigs: string[] = [];
+  const canvas2d = read2dCanvas();
+  if (canvas2d) sigs.push(canvas2d);
+  const webgl = readWebgl();
+  if (webgl) sigs.push(webgl);
+  return sigs;
+}
+
+/** A fixed 2D canvas render → data URL. Same input ⇒ same bytes on real HW. */
+function read2dCanvas(): string | null {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 240;
+    canvas.height = 60;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(10, 10, 100, 40);
+    ctx.fillStyle = "#069";
+    ctx.font = "16px 'Arial'";
+    ctx.fillText("Kaidn \u{1F512} fp", 12, 32);
+    ctx.strokeStyle = "rgba(102,204,0,0.7)";
+    ctx.arc(60, 30, 20, 0, Math.PI * 2);
+    ctx.stroke();
+    return canvas.toDataURL();
+  } catch {
+    return null;
+  }
+}
+
+/** A fixed WebGL pixel readback → string. Same draw ⇒ same pixels on real HW. */
+function readWebgl(): string | null {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const gl = (canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+    if (!gl) return null;
+    gl.clearColor(0.2, 0.5, 0.7, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const pixels = new Uint8Array(64 * 64 * 4);
+    gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    // Sum sampled pixels into a compact signature (avoids a huge string compare).
+    let sum = 0;
+    for (let i = 0; i < pixels.length; i += 97) sum = (sum + pixels[i]!) % 1_000_000;
+    return `${sum}`;
+  } catch {
+    return null;
+  }
 }
 
 /**

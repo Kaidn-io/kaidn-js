@@ -5,7 +5,7 @@ import type { FpResult } from "./types.js";
 const FP: FpResult = {
   device_id: "fp_abc123",
   device: { is_headless: false, ua_consistent: true },
-  attributes: { os: "Windows", browser: "Chrome", mobile: false },
+  attributes: { os: "Windows", browser: "Chrome", mobile: false, timezone: "America/New_York" },
   anomalies: [],
 };
 
