@@ -40,6 +40,10 @@ export interface FpDeviceSignals {
    *  anti-detect browser on macOS presenting as Windows). The server additionally
    *  checks the unspoofable Sec-CH-UA-Platform header and ORs it in here. */
   is_os_mismatch?: boolean;
+  /** a desktop browser exposing almost no fonts (<5) — font-enumeration
+   *  SUPPRESSION, the tell an anti-detect browser leaves when it blocks font
+   *  fingerprinting rather than spoofing it. Desktop-only, Brave excluded. */
+  is_font_evasion?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */

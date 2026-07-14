@@ -68,6 +68,8 @@ export interface EnvironmentInput {
   fontCount?: number;
   /** touch points; a "mobile" UA with 0 is a spoof tell, and vice-versa. */
   maxTouchPoints?: number;
+  /** Brave farbles font metrics for privacy (legit) → never flag font_evasion. */
+  isBrave?: boolean;
 }
 
 export interface EnvironmentResult {
@@ -75,6 +77,12 @@ export interface EnvironmentResult {
    *  anti-detect environment, not a normal residential device. Contributing
    *  signal (reviews; blocks when stacked), never a hard block alone. */
   isEmulated: boolean;
+  /** a DESKTOP browser exposing almost no fonts (<5) — a real desktop OS exposes
+   *  dozens, so this is font-enumeration SUPPRESSION, the tell an anti-detect
+   *  browser (Multilogin/GoLogin) leaves when it blocks font fingerprinting
+   *  rather than convincingly spoofing it. Brave excluded (it farbles fonts for
+   *  privacy). Contributing. */
+  fontEvasion: boolean;
   /** soft, individually-spoofable tells — evidence for an investigator. */
   anomalies: string[];
 }
@@ -88,19 +96,23 @@ export function detectEnvironment(env: EnvironmentInput): EnvironmentResult {
     strong.push("farm_hardware");
   }
 
-  // ---- soft tells → evidence only ----
-  // A real desktop OS exposes dozens of fonts; a spoofed/anti-detect profile
-  // often exposes very few. Only meaningful when fonts were actually probed.
-  if (typeof env.fontCount === "number" && env.fontCount > 0 && env.fontCount < 5) {
-    anomalies.push("sparse_fonts");
-  }
-  // UA claims mobile but the device reports no touch support (or the reverse).
+  // Font-enumeration suppression: a real DESKTOP OS exposes dozens of fonts; a
+  // spoofed/anti-detect profile that blocks font fingerprinting exposes almost
+  // none. Scored as font_evasion on desktop (mobiles legitimately expose few),
+  // excluding Brave (privacy farbling). Also surfaced as the sparse_fonts anomaly.
   const ua = env.userAgent ?? "";
+  const mobile = /mobile|android|iphone|ipad|ipod/i.test(ua);
+  const sparseFonts = typeof env.fontCount === "number" && env.fontCount > 0 && env.fontCount < 5;
+  if (sparseFonts) anomalies.push("sparse_fonts");
+  const fontEvasion = sparseFonts && !mobile && !!ua && !env.isBrave;
+
+  // ---- soft tells → evidence only ----
+  // UA claims mobile but the device reports no touch support (or the reverse).
   const claimsMobile = /mobile|android|iphone|ipod/i.test(ua);
   if (typeof env.maxTouchPoints === "number") {
     if (claimsMobile && env.maxTouchPoints === 0) anomalies.push("mobile_no_touch");
     if (!claimsMobile && /desktop/i.test(ua) && env.maxTouchPoints > 0) anomalies.push("desktop_touch");
   }
 
-  return { isEmulated: strong.length > 0, anomalies: strong.concat(anomalies) };
+  return { isEmulated: strong.length > 0, fontEvasion, anomalies: strong.concat(anomalies) };
 }

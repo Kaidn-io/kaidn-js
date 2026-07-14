@@ -69,13 +69,20 @@ describe("detectEnvironment", () => {
     expect(r.isEmulated).toBe(false);
     expect(r.anomalies).toEqual([]);
   });
-  it("surfaces sparse fonts as a soft anomaly (never flips the verdict)", () => {
+  it("flags font_evasion on a desktop suppressing font enumeration (<5 fonts)", () => {
     const r = detectEnvironment({
       webglRenderer: "ANGLE (NVIDIA, RTX 3070)",
       userAgent: DESKTOP_UA,
       fontCount: 2,
     });
-    expect(r.isEmulated).toBe(false);
-    expect(r.anomalies).toEqual(["sparse_fonts"]);
+    expect(r.isEmulated).toBe(false); // contributing, not a hard VM tell
+    expect(r.fontEvasion).toBe(true);
+    expect(r.anomalies).toContain("sparse_fonts");
+  });
+  it("does NOT flag font_evasion for a normal desktop, Brave, or mobile", () => {
+    expect(detectEnvironment({ userAgent: DESKTOP_UA, fontCount: 40 }).fontEvasion).toBe(false);
+    expect(detectEnvironment({ userAgent: DESKTOP_UA, fontCount: 2, isBrave: true }).fontEvasion).toBe(false);
+    const mobileUa = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+    expect(detectEnvironment({ userAgent: mobileUa, fontCount: 2 }).fontEvasion).toBe(false);
   });
 });
