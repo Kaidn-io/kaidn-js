@@ -37,6 +37,24 @@
     </div>
   </div>
 
+  <!-- 3) watch(): session heartbeat + live observation timeline -->
+  <div class="panel" style="margin-top:20px">
+    <h2 style="margin-top:0;font-size:15px">3. watch() — session heartbeat monitor</h2>
+    <p class="muted" style="font-size:13px">
+      Starts a heartbeat that re-beacons this device every few seconds, and streams the resulting
+      observation timeline. Kaidn watches for abnormal changes on the same device: a VPN dropping to
+      leak the real IP, a JA4 (TLS) swap, impossible travel, or IP hopping. Uses the key above; set
+      <code>KAIDN_API_KEY</code> in <code>.env</code> so the monitor can read the timeline.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+      <button class="primary" id="startWatch" style="width:auto">Start heartbeat</button>
+      <button id="stopWatch" style="display:none">Stop</button>
+      <span class="muted" id="watchStatus" style="font-size:12px"></span>
+    </div>
+    <div id="anomalies" style="margin-top:12px"></div>
+    <div id="timeline" style="margin-top:10px"></div>
+  </div>
+
   <div class="panel" style="margin-top:20px">
     <h2 style="margin-top:0;font-size:15px">How you'd use this in your app</h2>
     <pre id="usage"></pre>

@@ -44,7 +44,7 @@ try {
   const { build } = await import("esbuild");
   const out = await build({
     stdin: {
-      contents: `import { collect, beacon } from "./packages/fp/src/index.js"; window.KaidnFp = { collect, beacon };`,
+      contents: `import { collect, beacon, watch } from "./packages/fp/src/index.js"; window.KaidnFp = { collect, beacon, watch };`,
       resolveDir: ROOT,
       loader: "ts",
     },
@@ -78,6 +78,23 @@ const server = createServer(async (req, res) => {
     } catch (err) {
       const status = err instanceof KaidnError ? err.status || 500 : 500;
       return send(res, status, ".js", JSON.stringify({ error: err?.message ?? "request failed" }));
+    }
+  }
+
+  // proxy the device observation timeline (heartbeat monitor). Keeps the API key
+  // on the server; the page polls this while watch() beacons.
+  if (req.method === "GET" && url === "/observations") {
+    const deviceId = new URL(req.url, "http://x").searchParams.get("device_id");
+    const key = ENV_KEY;
+    if (!key) return send(res, 400, ".js", JSON.stringify({ error: "Set KAIDN_API_KEY to read the timeline." }));
+    if (!deviceId) return send(res, 400, ".js", JSON.stringify({ error: "device_id required" }));
+    try {
+      const r = await fetch(`${BASE_URL}/v1/device/${encodeURIComponent(deviceId)}/observations`, {
+        headers: { "x-api-key": key },
+      });
+      return send(res, r.status, ".js", await r.text());
+    } catch (err) {
+      return send(res, 502, ".js", JSON.stringify({ error: err?.message ?? "upstream error" }));
     }
   }
 

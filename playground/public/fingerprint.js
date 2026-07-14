@@ -16,6 +16,89 @@ if (!window.KaidnFp) {
   runCollect();
   $("recollect").onclick = runCollect;
   $("beacon").onclick = runBeacon;
+  $("startWatch").onclick = startWatch;
+  $("stopWatch").onclick = stopWatch;
+}
+
+// ---- session heartbeat monitor (watch() + live observation timeline) ----
+let watchHandle = null;
+let pollTimer = null;
+let watchDeviceId = null;
+
+async function startWatch() {
+  const pk = $("pk").value.trim();
+  if (!pk) return void ($("watchStatus").innerHTML = '<span class="err">Enter a pk_live_… key above first.</span>');
+  if (!window.KaidnFp.watch) return void ($("watchStatus").innerHTML = '<span class="err">Rebuild the playground — watch() not in this bundle.</span>');
+  // a short interval so the demo is lively (prod default is ~60s)
+  watchHandle = window.KaidnFp.watch(cfg.baseUrl + "/v1/fp", pk, { intervalMs: 20000 });
+  const fp = await window.KaidnFp.collect();
+  watchDeviceId = fp.device_id;
+  $("startWatch").style.display = "none";
+  $("stopWatch").style.display = "";
+  $("watchStatus").innerHTML = 'heartbeat running · beaconing every 20s · <span class="muted">' + esc(fp.device_id) + "</span>";
+  poll();
+  pollTimer = setInterval(poll, 5000);
+}
+
+function stopWatch() {
+  if (watchHandle) watchHandle.stop();
+  if (pollTimer) clearInterval(pollTimer);
+  watchHandle = pollTimer = null;
+  $("startWatch").style.display = "";
+  $("stopWatch").style.display = "none";
+  $("watchStatus").innerHTML = '<span class="muted">stopped</span>';
+}
+
+async function poll() {
+  if (!watchDeviceId) return;
+  try {
+    const r = await fetch("/observations?device_id=" + encodeURIComponent(watchDeviceId));
+    const d = await r.json();
+    if (d.error) return;
+    renderAnomalies(d.session || {});
+    renderTimeline(d.timeline || []);
+  } catch {
+    /* transient — the next poll retries */
+  }
+}
+
+function renderAnomalies(s) {
+  const flags = [
+    ["vpnDrop", "vpn_drop"],
+    ["ipCloaking", "ip_cloaking"],
+    ["ja4Changed", "ja4_changed"],
+    ["impossibleTravel", "impossible_travel"],
+  ].filter(([k]) => s[k]);
+  let h = "";
+  if (flags.length) h += flags.map(([, code]) => '<span class="pill bad">' + code + "</span>").join(" ");
+  if (s.distinctIps > 1) h += ' <span class="pill">distinct IPs: ' + s.distinctIps + "</span>";
+  $("anomalies").innerHTML = h
+    ? '<div class="muted" style="font-size:12px;margin-bottom:6px">Detected on this device:</div>' + h
+    : '<span class="muted" style="font-size:12px">No abnormal changes yet — beacon from a datacenter/VPN then drop it (or switch networks) to see a flip.</span>';
+}
+
+function renderTimeline(rows) {
+  if (!rows.length) return void ($("timeline").innerHTML = '<span class="muted" style="font-size:12px">Waiting for the first beacon…</span>');
+  const head = '<div class="kv" style="grid-template-columns:auto auto auto 1fr;gap:6px 16px;font-size:12px">';
+  const body = rows
+    .slice(-8)
+    .reverse()
+    .map((o) => {
+      const t = new Date(o.ts).toLocaleTimeString();
+      const conn =
+        o.connection === "datacenter"
+          ? '<span class="pill bad">datacenter</span>'
+          : o.connection === "residential"
+            ? '<span class="pill ok">residential</span>'
+            : '<span class="muted">—</span>';
+      return (
+        '<div class="muted">' + t + "</div><div>" + conn + '</div><div class="v">' +
+        esc(o.ip || "—") + '</div><div class="muted" style="font-family:var(--mono)">' +
+        esc(o.country || "") + (o.ja4 ? " · ja4 " + esc(o.ja4.slice(0, 10)) : "") + "</div>"
+      );
+    })
+    .join("");
+  $("timeline").innerHTML = head + body + "</div>";
 }
 
 async function runCollect() {
