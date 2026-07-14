@@ -1,6 +1,6 @@
 {
   "name": "@kaidn/fp",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Kaidn device fingerprint — thin browser client. Computes a stable device_id + automation signals (headless/UA/JA4 beacon) to pass to the Kaidn fraud-scoring API. Open client, closed engine.",
   "type": "module",
   "repository": {
@@ -19,9 +19,21 @@
       "import": "./dist/lib/index.js"
     }
   },
-  "files": ["dist/lib", "README.md", "LICENSE"],
+  "files": [
+    "dist/lib",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
-  "keywords": ["kaidn", "fingerprint", "device-fingerprint", "fraud", "bot-detection", "thumbmark", "automation-detection"],
+  "keywords": [
+    "kaidn",
+    "fingerprint",
+    "device-fingerprint",
+    "fraud",
+    "bot-detection",
+    "thumbmark",
+    "automation-detection"
+  ],
   "license": "MIT",
   "publishConfig": {
     "access": "public"

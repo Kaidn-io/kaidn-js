@@ -5,6 +5,7 @@ import { detectEnvironment } from "./environment.js";
 import { detectNoiseInjection } from "./noise.js";
 import { detectTamper, type TamperProbe } from "./tamper.js";
 import { compareContexts, type ContextSnapshot } from "./context.js";
+import { detectEngineMismatch } from "./engine.js";
 import { pickWebglRenderer, countFonts, type ComponentTree } from "./components.js";
 import { parseUserAgent } from "./useragent.js";
 import type { FpResult } from "./types.js";
@@ -57,12 +58,20 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
     maxTouchPoints: nav?.maxTouchPoints,
   });
 
-  // Noise injection: render the same canvas + WebGL twice and compare. Real
-  // hardware is deterministic; a difference means an anti-detect / canvas-
+  // Noise injection: render the same canvas + WebGL (+ audio) twice and compare.
+  // Real hardware is deterministic; a difference means an anti-detect / canvas-
   // defender browser is randomising the fingerprint per read. Brave's farbling
   // does this legitimately, so it's suppressed.
   const first = renderSignatures();
   const second = renderSignatures();
+  // AudioContext is another deterministic surface anti-detect tools farble; a
+  // per-render OfflineAudioContext hash differs only if noise is injected.
+  const audio1 = await audioSignature();
+  const audio2 = await audioSignature();
+  if (audio1 != null && audio2 != null) {
+    first.push(audio1);
+    second.push(audio2);
+  }
   const noiseInjected = detectNoiseInjection({ first, second, isBrave: isBraveBrowser(nav) });
 
   const timezone = resolveTimezone();
@@ -86,6 +95,11 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
   };
   const context = compareContexts(mainCtx, workerCtx);
 
+  // JS-engine vs claimed UA: an Error stack's frame format reveals the real
+  // engine (V8 vs Gecko/JSC), which a spoofed User-Agent can't hide — catches
+  // engine/UA emulation (e.g. a Chromium tool claiming an iOS Safari UA).
+  const engine = detectEngineMismatch({ userAgent: nav?.userAgent, stack: new Error().stack });
+
   return {
     device_id: `fp_${res.thumbmark}`,
     device: {
@@ -95,6 +109,7 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
       is_noise_injected: noiseInjected || undefined,
       is_tampered: tamper.tampered || undefined,
       is_context_mismatch: context.mismatch || undefined,
+      is_engine_mismatch: engine.mismatch || undefined,
     },
     attributes: { ...parseUserAgent(nav?.userAgent), timezone },
     anomalies: automation.anomalies
@@ -102,8 +117,44 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
       .concat(environment.anomalies)
       .concat(noiseInjected ? ["noise_injected"] : [])
       .concat(tamper.lies.map((l) => `tamper:${l}`))
-      .concat(context.fields.map((f) => `ctx:${f}`)),
+      .concat(context.fields.map((f) => `ctx:${f}`))
+      .concat(engine.reason ? [engine.reason] : []),
   };
+}
+
+/**
+ * A deterministic OfflineAudioContext render → compact signature. Real browsers
+ * return bit-identical output across renders; an anti-detect browser injecting
+ * per-render audio noise does not. Returns null when the API is unavailable
+ * (fail-safe: no signature can't manufacture a false positive).
+ */
+async function audioSignature(): Promise<string | null> {
+  try {
+    const OAC =
+      (globalThis as unknown as { OfflineAudioContext?: typeof OfflineAudioContext }).OfflineAudioContext ||
+      (globalThis as unknown as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+    if (!OAC) return null;
+    const ctx = new OAC(1, 4410, 44100);
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = 10000;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -50;
+    comp.knee.value = 40;
+    comp.ratio.value = 12;
+    comp.attack.value = 0;
+    comp.release.value = 0.25;
+    osc.connect(comp);
+    comp.connect(ctx.destination);
+    osc.start(0);
+    const buf = await ctx.startRendering();
+    const data = buf.getChannelData(0);
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 100) sum += Math.abs(data[i]!);
+    return sum.toFixed(6);
+  } catch {
+    return null;
+  }
 }
 
 const NATIVE_RE = /\{\s*\[native code\]\s*\}\s*$/;

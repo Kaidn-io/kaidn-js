@@ -31,6 +31,10 @@ export interface FpDeviceSignals {
    *  Worker — an anti-detect tool patched `window` but missed the worker context,
    *  leaking the real values. A near-zero-false-positive spoof tell. */
   is_context_mismatch?: boolean;
+  /** the real JS engine (from the Error-stack format: V8 vs Gecko/JSC) contradicts
+   *  the browser the User-Agent claims — engine/UA emulation the UA string can't
+   *  hide (e.g. a Chromium tool claiming an iOS Safari UA). iOS-WebKit aware. */
+  is_engine_mismatch?: boolean;
 }
 
 /** human-readable device context surfaced for triage (the "richer payload"). */

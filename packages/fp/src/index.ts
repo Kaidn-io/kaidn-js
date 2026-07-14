@@ -21,6 +21,14 @@ export { checkUaConsistency, type ConsistencyInput, type ConsistencyResult } fro
 export { detectNoiseInjection, type NoiseInput } from "./noise.js";
 export { detectTamper, type TamperInput, type TamperProbe, type TamperResult } from "./tamper.js";
 export { compareContexts, type ContextSnapshot, type ContextResult } from "./context.js";
+export {
+  detectEngineMismatch,
+  engineFromStack,
+  expectedEngine,
+  type EngineInput,
+  type EngineResult,
+  type EngineFamily,
+} from "./engine.js";
 export { flattenComponents, pickWebglRenderer, type ComponentTree } from "./components.js";
 export { parseUserAgent, type UaAttributes } from "./useragent.js";
 export type { FpResult, FpDeviceSignals, FpAttributes } from "./types.js";
