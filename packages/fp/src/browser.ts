@@ -1,4 +1,4 @@
-import { collect } from "./collect.js";
+import { collect, watch, type WatchHandle, type WatchOptions } from "./collect.js";
 import {
   createTracker,
   type Tracker,
@@ -92,13 +92,19 @@ function makeSend(pk: string) {
 }
 
 export function bootstrap(): Tracker {
+  const pk = publishableKey();
+  const endpoint = beaconEndpoint();
   const tracker = createTracker({
     collect,
-    send: makeSend(publishableKey()),
+    send: makeSend(pk),
     dom: realDom(),
-    endpoint: beaconEndpoint(),
+    endpoint,
   });
-  (window as unknown as { Kaidn: Tracker }).Kaidn = tracker;
+  // Expose the session heartbeat on the drop-in tag too: Kaidn.watch() re-beacons
+  // the same device_id over time so a mid-session IP flip (VPN drop) is caught.
+  const api = tracker as Tracker & { watch: (options?: WatchOptions) => WatchHandle };
+  api.watch = (options?: WatchOptions) => watch(endpoint, pk, options);
+  (window as unknown as { Kaidn: typeof api }).Kaidn = api;
   return tracker;
 }
 

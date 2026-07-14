@@ -86,6 +86,12 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
  */
 export async function beacon(endpoint: string, pk: string, options: CollectOptions = {}): Promise<FpResult> {
   const fp = await collect(options);
+  await postBeacon(endpoint, pk, fp);
+  return fp;
+}
+
+/** POST an already-collected fingerprint to the edge. Best-effort. */
+async function postBeacon(endpoint: string, pk: string, fp: FpResult): Promise<void> {
   try {
     await fetch(endpoint, {
       method: "POST",
@@ -97,5 +103,60 @@ export async function beacon(endpoint: string, pk: string, options: CollectOptio
   } catch {
     // best-effort: a failed beacon must never break the host page's signup flow.
   }
-  return fp;
+}
+
+export interface WatchOptions extends CollectOptions {
+  /** heartbeat interval in ms (default 60000). Clamped to a 20s floor. */
+  intervalMs?: number;
+}
+
+/** Stop a running watch(). */
+export type WatchHandle = { stop: () => void };
+
+/**
+ * Session heartbeat. Fingerprints ONCE, then re-beacons the same device_id on an
+ * interval (and whenever the tab becomes visible again) so Kaidn sees the IP the
+ * connection is coming from OVER TIME. The device_id + JA4 are constant across a
+ * VPN change, so a beacon whose IP flips connection type on the same device is
+ * the tell — a dropped VPN leaking the real home IP, or a device that started
+ * cloaking mid-session. Call once when your page loads a logged-in/session view.
+ *
+ * @example
+ *   const watch = Kaidn.watch("https://api.kaidn.io/v1/fp", "pk_live_xxx");
+ *   // later, e.g. on logout / route change:
+ *   watch.stop();
+ */
+export function watch(endpoint: string, pk: string, options: WatchOptions = {}): WatchHandle {
+  const interval = Math.max(20_000, options.intervalMs ?? 60_000);
+  let stopped = false;
+  let fp: FpResult | undefined;
+  let timer: ReturnType<typeof setInterval> | undefined;
+
+  const ping = () => {
+    if (stopped || !fp) return;
+    // only beacon when the tab is actually visible — a hidden/background tab
+    // isn't a live session and would add noise to the observation timeline.
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    void postBeacon(endpoint, pk, fp);
+  };
+
+  const onVisible = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") ping();
+  };
+
+  void collect(options).then((res) => {
+    if (stopped) return;
+    fp = res;
+    void postBeacon(endpoint, pk, fp); // immediate first observation
+    timer = setInterval(ping, interval);
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisible);
+  });
+
+  return {
+    stop() {
+      stopped = true;
+      if (timer) clearInterval(timer);
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisible);
+    },
+  };
 }

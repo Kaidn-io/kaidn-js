@@ -51,6 +51,11 @@ JA4 with `device_id`, and your later `/v1/score` lookup inherits it.
 
 - `collect(options?)` — compute `{ device_id, device, attributes, anomalies }` (no network)
 - `beacon(endpoint, pk, options?)` — `collect()` + best-effort POST to `/v1/fp`
+- `watch(endpoint, pk, options?)` — session heartbeat: fingerprints once, then re-beacons
+  the same `device_id` every ~60s (and on tab refocus) so Kaidn sees the connection's IP
+  **over time**. Because `device_id` + JA4 stay constant across a VPN change, a beacon whose
+  IP flips connection type mid-session (a dropped VPN leaking the real home IP, or a device
+  that starts cloaking) is caught by scoring. Returns `{ stop() }`.
 - `createTracker(deps)` — the testable core behind the `window.Kaidn` drop-in tag
 - `detectAutomation`, `checkUaConsistency`, `parseUserAgent`, `flattenComponents`, `pickWebglRenderer` — the pure signal helpers
 

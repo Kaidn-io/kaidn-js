@@ -1,4 +1,11 @@
-export { collect, beacon, type CollectOptions } from "./collect.js";
+export {
+  collect,
+  beacon,
+  watch,
+  type CollectOptions,
+  type WatchOptions,
+  type WatchHandle,
+} from "./collect.js";
 export {
   createTracker,
   type Tracker,
