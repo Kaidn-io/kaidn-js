@@ -1,6 +1,6 @@
 {
   "name": "@kaidn/sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Official Node/TypeScript server-side client for the Kaidn fraud-scoring API — score, checks, batch, lists, labels, analytics and config.",
   "type": "module",
   "repository": {
