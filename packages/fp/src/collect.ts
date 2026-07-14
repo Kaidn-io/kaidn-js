@@ -57,7 +57,6 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
     userAgent: nav?.userAgent,
     fontCount: countFonts(res.components as ComponentTree),
     maxTouchPoints: nav?.maxTouchPoints,
-    isBrave: isBraveBrowser(nav),
   });
 
   // Noise injection: render the same canvas + WebGL (+ audio) twice and compare.
@@ -128,7 +127,6 @@ export async function collect(options: CollectOptions = {}): Promise<FpResult> {
       is_context_mismatch: context.mismatch,
       is_engine_mismatch: engine.mismatch,
       is_os_mismatch: os.mismatch,
-      is_font_evasion: environment.fontEvasion,
     },
     attributes: { ...uaAttrs, timezone },
     anomalies: automation.anomalies
