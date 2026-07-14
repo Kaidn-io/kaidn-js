@@ -7,9 +7,7 @@ import { dirname, join } from "node:path";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-await build({
-  entryPoints: [join(root, "src/browser.ts")],
-  outfile: join(root, "dist/fp.js"),
+const common = {
   bundle: true,
   minify: true,
   format: "iife",
@@ -17,6 +15,25 @@ await build({
   platform: "browser",
   sourcemap: false,
   legalComments: "none",
+};
+
+// 1) the drop-in tracker tag → window.Kaidn (store/trigger/beacon on a form)
+await build({
+  ...common,
+  entryPoints: [join(root, "src/browser.ts")],
+  outfile: join(root, "dist/fp.js"),
 });
 
-console.log("built dist/fp.js (browser drop-in, window.Kaidn)");
+// 2) the raw API → window.KaidnFp = { collect, beacon }. Used by playgrounds and
+//    anyone who wants collect()/beacon() directly rather than the form helper.
+await build({
+  ...common,
+  stdin: {
+    contents: `import { collect, beacon } from "./src/index.js"; window.KaidnFp = { collect, beacon };`,
+    resolveDir: root,
+    loader: "ts",
+  },
+  outfile: join(root, "dist/fp-collect.js"),
+});
+
+console.log("built dist/fp.js (window.Kaidn) + dist/fp-collect.js (window.KaidnFp)");
