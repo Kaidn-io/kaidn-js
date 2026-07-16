@@ -1,6 +1,6 @@
 {
   "name": "@kaidn/fp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Kaidn device fingerprint — thin browser client. Computes a stable device_id + automation signals (headless/UA/JA4 beacon) to pass to the Kaidn fraud-scoring API. Open client, closed engine.",
   "type": "module",
   "repository": {

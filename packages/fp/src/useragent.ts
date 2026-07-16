@@ -8,7 +8,12 @@
 export interface UaAttributes {
   /** e.g. "Windows", "macOS", "Android", "iOS", "Linux", or null if unknown */
   os: string | null;
-  /** e.g. "Chrome", "Safari", "Firefox", "Edge", "Samsung Internet", or null */
+  /**
+   * e.g. "Chrome", "Safari", "Firefox", "Edge", "Samsung Internet"; in-app
+   * browsers report the host app ("X (Twitter) In-App", "Instagram In-App", …)
+   * and unbranded embedded views report "iOS WebView" / "Android WebView".
+   * null only when the UA carries no browser signal at all.
+   */
   browser: string | null;
   /** true if a phone/tablet UA, false if desktop, null if unknown */
   mobile: boolean | null;
@@ -29,15 +34,43 @@ function osOf(ua: string): string | null {
   return null;
 }
 
+/**
+ * In-app browsers append (or substitute) the host app's token, so they must be
+ * matched before the brand checks — an Instagram-on-Android UA also contains
+ * "Chrome", and an X-on-iOS UA contains NO brand token at all (which is how
+ * these UAs previously fell through to null).
+ */
+const IN_APP: Array<[RegExp, string]> = [
+  [/twitter for iphone|twitterandroid/i, "X (Twitter) In-App"],
+  [/instagram/i, "Instagram In-App"],
+  [/fb_iab|fban|fbav/i, "Facebook In-App"],
+  [/musical_ly|bytedance/i, "TikTok In-App"],
+  [/snapchat/i, "Snapchat In-App"],
+  [/linkedinapp/i, "LinkedIn In-App"],
+  [/pinterest/i, "Pinterest In-App"],
+  [/micromessenger/i, "WeChat In-App"],
+  [/\bline\//i, "LINE In-App"],
+  [/\bgsa\//i, "Google App In-App"],
+];
+
 function browserOf(ua: string): string | null {
   // Order matters: many browsers embed "Chrome"/"Safari" in their UA, so the
-  // more specific brands are checked first.
+  // more specific brands are checked first, and in-app tokens before those.
+  for (const [re, name] of IN_APP) if (re.test(ua)) return name;
+  if (/duckduckgo/i.test(ua)) return "DuckDuckGo";
   if (/edg(a|ios)?\//i.test(ua)) return "Edge";
   if (/opr\/|opera/i.test(ua)) return "Opera";
   if (/samsungbrowser/i.test(ua)) return "Samsung Internet";
+  // Android System WebView marks itself with "; wv)" and would otherwise
+  // report as Chrome (its UA carries the Chrome token).
+  if (/;\s*wv\)/i.test(ua)) return "Android WebView";
   if (/firefox|fxios/i.test(ua)) return "Firefox";
   if (/chrome|crios|chromium/i.test(ua)) return "Chrome";
   if (/safari/i.test(ua)) return "Safari"; // real Safari has no Chrome/Firefox token
+  // WebKit with no Safari token = an embedded WKWebView whose host app doesn't
+  // identify itself (Telegram, many link previews). On iOS every such view is
+  // WKWebView; elsewhere it's some embedded WebKit shell.
+  if (/applewebkit/i.test(ua)) return /iphone|ipad|ipod/i.test(ua) ? "iOS WebView" : "WebView";
   return null;
 }
 
